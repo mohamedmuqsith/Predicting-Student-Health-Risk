@@ -14,6 +14,17 @@ from pathlib import Path
 
 app_path = Path(__file__).parent / 'streamlit_app' / 'app.py'
 
+# If launched directly by Streamlit (e.g., Streamlit Community Cloud)
+try:
+    import streamlit as st
+    if st.runtime.exists():
+        with open(app_path, 'r', encoding='utf-8') as f:
+            exec(f.read(), globals())
+        sys.exit(0)
+except Exception:
+    pass
+
+# If launched via `python run_app.py` in terminal
 print("=" * 55)
 print("  CIS6005 — Student Health Risk Predictor")
 print("  Launching Streamlit Application...")
