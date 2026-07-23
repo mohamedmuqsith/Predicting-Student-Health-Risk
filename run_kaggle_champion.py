@@ -120,6 +120,7 @@ test_ids = test_proc['id'] if 'id' in test_proc.columns else pd.Series(range(len
 X_test = test_proc.drop(columns=['id', TARGET], errors='ignore')
 
 # Categorical Frequency Encoding & Label Encoding
+cat_encoders = {}
 cat_cols = X_all.select_dtypes('object').columns.tolist()
 for c in cat_cols:
     le = LabelEncoder()
@@ -128,6 +129,7 @@ for c in cat_cols:
     le.fit(combined_cats)
     X_all[c] = le.transform(X_all[c].astype(str))
     X_test[c] = le.transform(X_test[c].astype(str))
+    cat_encoders[c] = le
 
 # Scale features
 scaler = StandardScaler()
