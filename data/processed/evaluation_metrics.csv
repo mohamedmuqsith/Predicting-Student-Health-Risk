@@ -1,0 +1,6 @@
+Model,Accuracy,Precision,Recall,F1 (Weighted),F1 (Macro)
+Gradient Boosting,0.9655,0.9654,0.9655,0.964,0.9035
+K-Nearest Neighbours,0.93,0.927,0.93,0.9242,0.7875
+Random Forest,0.9022,0.9297,0.9022,0.9101,0.7926
+Decision Tree,0.858,0.9198,0.858,0.8746,0.7334
+Logistic Regression,0.7986,0.8984,0.7986,0.8261,0.6574

@@ -1,0 +1,63 @@
+# ============================================================
+# Python
+# ============================================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ============================================================
+# Jupyter Notebooks
+# ============================================================
+.ipynb_checkpoints/
+
+# ============================================================
+# Large Model Files (>100MB — exceeds GitHub limit)
+# ============================================================
+models/best_model_final.joblib
+models/model_tuned_best.joblib
+models/production_bundle.joblib
+models/model_random_forest.joblib
+models/gridsearch_rf.joblib
+models/oof_preds.npy
+models/test_preds.npy
+models/y_all.npy
+models/model_knn.joblib
+
+# ============================================================
+# Large Data Files (raw & processed CSVs / numpy arrays)
+# ============================================================
+data/raw/train.csv
+data/raw/test.csv
+data/processed/train_cleaned.csv
+data/processed/train_featured.csv
+data/processed/test_cleaned.csv
+data/processed/test_featured.csv
+data/processed/X_train.npy
+data/processed/X_test.npy
+data/processed/X_val.npy
+data/processed/y_train.npy
+data/processed/y_val.npy
+
+# ============================================================
+# CatBoost Training Logs
+# ============================================================
+catboost_info/
+
+# ============================================================
+# VS Code
+# ============================================================
+.vscode/
+
+# ============================================================
+# Environment
+# ============================================================
+.env
+*.env
+venv/
+env/
