@@ -21,7 +21,6 @@ build/
 # ============================================================
 models/best_model_final.joblib
 models/model_tuned_best.joblib
-models/production_bundle.joblib
 models/model_random_forest.joblib
 models/gridsearch_rf.joblib
 models/oof_preds.npy
