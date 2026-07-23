@@ -28,10 +28,29 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-* { font-family: 'Inter', sans-serif !important; }
+html, body, .stApp, button, input, select, textarea, label, p, h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
 
-html, body, [class*="css"] {
+html, body {
+    color: #f0f0fa;
+}
+
+/* Fix Streamlit Dataframe Glide Data Grid menu / icons overflow */
+div[portal] *, .gdg-menu *, [data-testid="stDataFrame"] * {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+div[portal], .gdg-menu, [class*="gdg-container"], [data-baseweb="menu"], [data-baseweb="popover"] {
+    background-color: #1e1b4b !important;
+    border: 1px solid rgba(167, 139, 250, 0.4) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6) !important;
+}
+
+div[portal] *, .gdg-menu *, [data-baseweb="menu"] *, [data-baseweb="popover"] * {
     color: #f0f0fa !important;
+    font-size: 0.88rem !important;
 }
 
 .stApp {
@@ -914,12 +933,23 @@ elif "📊 Dashboard" in page:
     if comp_path.exists():
         st.markdown("### 🏆 All Models Comparison")
         comp_df = pd.read_csv(comp_path)
+        
+        # Format numeric metric columns cleanly to 4 decimal places
+        num_cols = [c for c in comp_df.columns if c != 'Model']
+        comp_df_styled = comp_df.copy()
+        for col in num_cols:
+            comp_df_styled[col] = comp_df_styled[col].apply(
+                lambda x: round(float(x), 4) if pd.notnull(x) else x
+            )
+
         st.dataframe(
-            comp_df.style.highlight_max(
-                subset=[c for c in comp_df.columns if 'F1' in c or 'Acc' in c],
+            comp_df_styled.style.format({c: "{:.4f}" for c in num_cols})
+            .highlight_max(
+                subset=[c for c in comp_df_styled.columns if 'F1' in c or 'Acc' in c],
                 color='#1a6644'
             ),
-            use_container_width=True
+            use_container_width=True,
+            hide_index=True
         )
     else:
         st.info("Run notebook 10 (Model Comparison) to see the full comparison table here.")
