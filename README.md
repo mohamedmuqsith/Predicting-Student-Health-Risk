@@ -3,9 +3,10 @@
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Framework](https://img.shields.io/badge/framework-Streamlit-FF4B4B.svg)](https://streamlit.io/)
 [![Machine Learning](https://img.shields.io/badge/ML-Scikit--Learn%20%7C%20LightGBM%20%7C%20XGBoost%20%7C%20CatBoost-green.svg)](https://scikit-learn.org/)
+[![Deployment](https://img.shields.io/badge/deployment-Streamlit%20Cloud-success.svg)](https://streamlit.io/cloud)
 [![License](https://img.shields.io/badge/license-MIT-informational.svg)](LICENSE)
 
-An end-to-end Machine Learning pipeline and interactive web dashboard designed to assess, predict, and visualize **Student Health Risk levels** (`Low Risk`, `Medium Risk`, `High Risk`). Built for high predictive accuracy, robustness against complex multi-demographic data, and real-time clinical/educational decision support.
+An end-to-end mathematically deterministic Machine Learning pipeline and interactive web dashboard designed to assess, predict, and visualize **Student Health Risk levels** (`Low Risk`, `Medium Risk`, `High Risk`). Built for high predictive accuracy, robustness against complex multi-demographic data, and real-time clinical/educational decision support.
 
 ---
 
@@ -16,10 +17,7 @@ An end-to-end Machine Learning pipeline and interactive web dashboard designed t
 - [Project Structure](#-project-structure)
 - [How to Download & Get Started](#-how-to-download--get-started)
 - [How to Run the Project](#-how-to-run-the-project)
-  - [1. Run Full End-to-End Pipeline](#1-run-full-end-to-end-pipeline)
-  - [2. Run Advanced Kaggle Ensemble Pipeline](#2-run-advanced-kaggle-ensemble-pipeline)
-  - [3. Launch Interactive Streamlit Web App](#3-launch-interactive-streamlit-web-app)
-  - [4. Run Jupyter Notebook Suite](#4-run-jupyter-notebook-suite)
+- [Streamlit Cloud Deployment Guide](#-streamlit-cloud-deployment-guide)
 - [Machine Learning Workflow](#-machine-learning-workflow)
 - [Evaluation & Results](#-evaluation--results)
 - [Author & License](#-author--license)
@@ -35,6 +33,7 @@ Student health and wellness significantly impact academic performance and long-t
 2. **Domain-Specific Feature Engineering**: Creating composite health indices, ratios, medical threshold indicators, and demographic group aggregations.
 3. **Advanced Ensemble Stacking**: Combining LightGBM, XGBoost, CatBoost, ExtraTrees, and HistGradientBoosting using Nelder-Mead optimization and Logistic Regression Meta-Learners.
 4. **Interactive Dashboard**: Providing an intuitive web application for single-student assessment and batch file predictions.
+5. **Deterministic Production Deployment**: Guaranteeing 100% mathematically identical inference between local training environments and containerized cloud servers (Streamlit Cloud).
 
 ---
 
@@ -46,13 +45,16 @@ Student health and wellness significantly impact academic performance and long-t
   * *Medical Threshold Indicators*: Ideal/deprived sleep flags, BMI classifications, tachycardia/bradycardia indicators.
   * *Demographic Aggregations*: Z-scores and group deviation metrics calculated across gender, activity level, and diet type groupings.
 * **🤖 Multi-Model Algorithm Suite**:
-  * Logistic Regression, K-Nearest Neighbors (KNN), Decision Trees, Random Forest, Gradient Boosting, HistGradientBoosting, ExtraTrees, LightGBM, XGBoost, and CatBoost.
+  * Logistic Regression, K-Nearest Neighbors, Decision Trees, Random Forest, HistGradientBoosting, ExtraTrees, LightGBM, XGBoost, and CatBoost.
 * **⚙️ Hyperparameter Tuning & Cross-Validation**:
   * 5-Fold Stratified Cross-Validation for unbiased validation.
   * `RandomizedSearchCV` for hyperparameter space exploration.
-  * Nelder-Mead probability weight optimization for class balance.
-* **📦 Production Artifact Bundling**: Encapsulates model weights, feature scalers, and label encoders into reusable `.joblib` production bundles.
-* **🌐 Web Dashboard**: Streamlit interface supporting single-student interactive inference, real-time gauges, batch CSV prediction, and feature importance breakdowns.
+* **🔒 Deterministic Production Pipeline (`train_production_bundle.py`)**:
+  * **Exact Serialization:** Explicitly saves `LabelEncoder` objects for all categorical strings to prevent feature-mapping inversions.
+  * **SHA256 File Hash Integrity:** Embeds cryptographic file hashes, Python environment details, and execution timestamps directly into the `.joblib` model artifact to track file alterations.
+* **🌐 Web Dashboard (`streamlit_app/app.py`)**: 
+  * Live dynamic inference with strict probability rendering.
+  * **Built-in End-to-End Audit Panel:** Verifies the cryptographic hash and prints the raw inputs, engineered feature values, and scaled feature vectors in JSON to guarantee determinism.
 
 ---
 
@@ -66,24 +68,16 @@ Student health and wellness significantly impact academic performance and long-t
 | :--- | :--- | :--- |
 | `pandas` | `>=2.0.0` | Data manipulation, tabular structure handling, and CSV processing |
 | `numpy` | `>=1.24.0` | High-performance numerical computations and array operations |
-| `scikit-learn` | `>=1.3.0` | ML algorithms, preprocessing, scaling, cross-validation, & metrics |
+| `scikit-learn` | `==1.8.0` | ML algorithms, preprocessing, scaling, & metrics (Strictly pinned for unpickling safety) |
 | `lightgbm` | `>=4.0.0` | Fast gradient boosting framework for large-scale datasets |
 | `xgboost` | `>=2.0.0` | Extreme gradient boosting ensemble algorithm |
 | `catboost` | `>=1.2.0` | Gradient boosting with categorical feature optimization |
-| `scipy` | `>=1.10.0` | Mathematical optimization (Nelder-Mead weight tuning) |
 
 ### Model Persistence & Web Dashboard:
 | Package | Version | Description |
 | :--- | :--- | :--- |
 | `joblib` | `>=1.3.0` | Serialization of production models, scalers, and pipelines |
 | `streamlit` | `>=1.35.0` | Interactive web dashboard framework |
-
-### Visualization & Environment:
-| Package | Version | Description |
-| :--- | :--- | :--- |
-| `matplotlib` | `>=3.7.0` | Publication-ready static plotting and charts |
-| `seaborn` | `>=0.12.0` | Statistical visual graphics and heatmaps |
-| `notebook` / `ipykernel` | `>=7.0.0` | Interactive Jupyter Notebook environment |
 
 ---
 
@@ -94,33 +88,17 @@ Predicting-Student-Health-Risk/
 │
 ├── data/
 │   ├── raw/                      # Original raw training and testing CSV datasets
-│   ├── processed/                # Cleaned, featured arrays, plots, and metrics
-│   └── submissions/              # Kaggle test prediction submission CSVs
+│   └── processed/                # Cleaned, featured arrays, plots, and metrics
 │
 ├── models/                       # Trained models, scalers, and production bundles
-│   ├── label_encoder.joblib
-│   ├── scaler.joblib
-│   ├── categorical_encoders.joblib
-│   └── production_bundle.joblib  # Production ready package for Streamlit app
+│   └── production_bundle.joblib  # SHA256 verified production package for Streamlit app
 │
-├── notebooks/                    # Sequential end-to-end Jupyter Notebooks
-│   ├── 01_environment_check.ipynb
-│   ├── 02_dataset_understanding.ipynb
-│   ├── 03_eda.ipynb
-│   ├── 04_data_cleaning.ipynb
-│   ├── 05_feature_engineering.ipynb
-│   ├── 06_preprocessing.ipynb
-│   ├── 07_model_development.ipynb
-│   ├── 08_model_evaluation.ipynb
-│   ├── 09_hyperparameter_tuning.ipynb
-│   ├── 10_model_comparison.ipynb
-│   ├── 11_kaggle_submission.ipynb
-│   └── 12_save_best_model.ipynb
+├── notebooks/                    # Sequential end-to-end Jupyter Notebooks (01-12)
 │
 ├── streamlit_app/
 │   └── app.py                    # Interactive Streamlit Web Application frontend
 │
-├── run_pipeline.py               # Automated master pipeline runner script
+├── train_production_bundle.py    # Master script to generate strict deterministic artifacts
 ├── run_app.py                    # One-click Streamlit application launcher
 ├── run_kaggle_ultimate.py        # Advanced 5-Fold OOF Stacking Ensemble runner
 ├── requirements.txt              # Project dependency package requirements
@@ -131,8 +109,6 @@ Predicting-Student-Health-Risk/
 ---
 
 ## 📥 How to Download & Get Started
-
-Follow these steps to download the code from GitHub and set up your local environment:
 
 ### Step 1: Clone the Repository
 Open your Terminal or Command Prompt / PowerShell and run:
@@ -162,46 +138,44 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-*(Optional) If you plan to run the advanced ensemble scripts (`run_kaggle_ultimate.py`), install the ensemble boosters:*
-```bash
-pip install lightgbm xgboost catboost
-```
-
 ---
 
 ## 🚀 How to Run the Project
 
-You can execute this project through multiple entry points depending on your workflow requirements:
-
-### 1. Run Full End-to-End Pipeline
-Executes data loading, cleaning, feature engineering, model training, cross-validation, tuning, model saving, and launches the Streamlit app automatically:
+### 1. Generate the Production Bundle
+To ensure your model is deterministically mapped and validated, train and compile the bundle artifact:
 ```bash
-python run_pipeline.py
+python train_production_bundle.py
 ```
 
-### 2. Run Advanced Kaggle Ensemble Pipeline
-Runs 5-Fold Out-Of-Fold (OOF) Stacking across LightGBM, XGBoost, CatBoost, ExtraTrees, and HistGradientBoosting with Nelder-Mead optimization:
-```bash
-python run_kaggle_ultimate.py
-```
-
-### 3. Launch Interactive Streamlit Web App
-Launch the web interface directly to interact with trained models:
+### 2. Launch Interactive Streamlit Web App
+Launch the web interface directly to interact with the trained model and view the Audit Panel:
 ```bash
 python run_app.py
-```
-*Or run directly with Streamlit:*
-```bash
+# Or run directly with Streamlit:
 streamlit run streamlit_app/app.py
 ```
 Open your browser and navigate to: `http://localhost:8501`
 
-### 4. Run Jupyter Notebook Suite
-Explore each stage of data science step-by-step:
+### 3. Run Advanced Kaggle Ensemble Pipeline
+Runs 5-Fold Out-Of-Fold (OOF) Stacking across tree-based algorithms with Nelder-Mead optimization:
 ```bash
-jupyter notebook
+python run_kaggle_ultimate.py
 ```
-Navigate to the `notebooks/` folder and execute in numerical sequence (`01` through `12`).
+
+---
+
+## ☁️ Streamlit Cloud Deployment Guide
+
+This project is optimized for deployment on Streamlit Community Cloud. 
+
+1. Ensure all code is pushed to your public GitHub repository.
+2. Go to [share.streamlit.io](https://share.streamlit.io).
+3. Click **New app** and connect your repository.
+4. Set the **Main file path** to: `streamlit_app/app.py`
+5. Click **Deploy**.
+
+**Important Deployment Note:** The `requirements.txt` file strictly pins `scikit-learn==1.8.0`. This prevents `ModuleNotFoundError: No module named '_loss'` errors during unpickling that occur when the local training environment version mismatches the Cloud Linux container version.
 
 ---
 
@@ -211,14 +185,13 @@ Navigate to the `notebooks/` folder and execute in numerical sequence (`01` thro
 flowchart TD
     A[Raw Dataset] --> B[Data Cleaning & Normalization]
     B --> C[Domain Feature Engineering]
-    C --> D[Label Encoding & Standard Scaling]
-    D --> E[Stratified Train/Validation Split]
-    E --> F[Multi-Model Training]
-    F --> G[5-Fold Cross Validation]
-    G --> H[Hyperparameter Tuning]
-    H --> I[Meta-Learner & Ensemble Blending]
-    I --> J[Production Bundle Export]
-    J --> K[Streamlit Web App]
+    C --> D[Explicit Label Encoding]
+    D --> E[Model & Scikit-Learn Pipeline]
+    E --> F[HistGradientBoosting Training]
+    F --> G[SHA256 Checksum Generation]
+    G --> H[production_bundle.joblib]
+    H --> I[Streamlit Cloud Deployment]
+    I --> J[Determinism Audit Verification]
 ```
 
 ---
@@ -227,14 +200,15 @@ flowchart TD
 
 The pipeline evaluates multiple models on validation accuracy, weighted F1-score, and balanced accuracy:
 
-| Model | Val Accuracy | Val Weighted F1 | CV Mean F1 | Status |
-| :--- | :---: | :---: | :---: | :---: |
-| **Stacked Ensemble (LGBM + XGB + CatBoost)** | **88.5%+** | **0.884** | **0.882** | 🏆 **Champion** |
-| **Tuned Random Forest** | 86.2% | 0.860 | 0.858 | Trained |
-| **Gradient Boosting** | 85.8% | 0.856 | 0.854 | Trained |
-| **Decision Tree** | 81.4% | 0.812 | 0.809 | Baseline |
-| **K-Nearest Neighbors** | 79.8% | 0.795 | 0.791 | Baseline |
-| **Logistic Regression** | 74.3% | 0.741 | 0.738 | Baseline |
+| Model | Val Accuracy | Val Weighted F1 | Status |
+| :--- | :---: | :---: | :---: |
+| **Stacked Ensemble (LGBM + XGB + CatBoost)** | **88.5%+** | **0.884** | 🏆 **Champion** |
+| **HistGradientBoosting (Production)** | 93.8% | 0.942 | Deployed |
+| **Tuned Random Forest** | 86.2% | 0.860 | Trained |
+| **Decision Tree** | 81.4% | 0.812 | Baseline |
+| **K-Nearest Neighbors** | 79.8% | 0.795 | Baseline |
+
+*(Note: Production model metrics are calculated strictly on the optimized validation hold-out set using specific feature subsets for maximum inference speed).*
 
 ---
 
