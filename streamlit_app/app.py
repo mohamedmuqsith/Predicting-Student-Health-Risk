@@ -258,12 +258,19 @@ def make_prediction(inputs: dict, bundle: dict):
     Returns: (prediction_label, class_probabilities_dict)
     """
     df = pd.DataFrame([inputs])
-    cat_encoders = bundle.get('categorical_encoders', {})
+    cat_encoders = bundle.get('categorical_encoders', {}) or {}
 
-    # ── Step 1: Feature engineering (mirrors notebook 05) ──
-    # Must happen BEFORE categorical encoding, using raw string values.
+    cat_mappings = {
+        'sleep_quality': {'poor': 0, 'fair': 1, 'average': 1, 'good': 2, 'excellent': 3},
+        'stress_level': {'low': 0, 'medium': 1, 'high': 2},
+        'physical_activity_level': {'sedentary': 0, 'moderate': 1, 'active': 2, 'very active': 3},
+        'gender': {'female': 0, 'male': 1, 'other': 2},
+        'diet_type': {'balanced': 0, 'non-veg': 1, 'veg': 2, 'vegan': 3},
+        'smoking_alcohol': {'no': 0, 'occasional': 1, 'yes': 2},
+        'bmi_category': {'underweight': 0, 'normal': 1, 'overweight': 2, 'obese': 3}
+    }
 
-    # BMI category — compute as string label to match LabelEncoder
+    # BMI category
     if 'bmi' in df.columns:
         bmi_val = float(df['bmi'].iloc[0])
         if   bmi_val < 18.5: df['bmi_category'] = 'underweight'
@@ -271,86 +278,100 @@ def make_prediction(inputs: dict, bundle: dict):
         elif bmi_val < 30.0: df['bmi_category'] = 'overweight'
         else:                df['bmi_category'] = 'obese'
 
-    # ── Step 2: Encode categorical columns ──────────────
-    # Now encode all categorical columns (including bmi_category as string).
-    for col, enc in cat_encoders.items():
-        if col in df.columns:
-            val      = str(df[col].iloc[0]).lower().strip()
-            known    = set(enc.classes_)
-            safe_val = val if val in known else enc.classes_[0]
-            df[col]  = enc.transform([safe_val])[0]   # scalar int
+    # Encode categorical columns
+    for col in list(df.select_dtypes(include=['object']).columns):
+        val_str = str(df[col].iloc[0]).lower().strip()
+        if cat_encoders and col in cat_encoders:
+            enc = cat_encoders[col]
+            known = set(enc.classes_)
+            safe_val = val_str if val_str in known else enc.classes_[0]
+            df[col] = enc.transform([safe_val])[0]
+        elif col in cat_mappings:
+            df[col] = cat_mappings[col].get(val_str, 0)
+        else:
+            try:
+                df[col] = float(val_str)
+            except ValueError:
+                df[col] = 0.0
 
-    # ── Step 3: Compute numeric engineered features ─────
-    # After encoding, stress_level / sleep_quality are now integers — use them.
+    # Ensure initial numeric columns
+    for col in df.columns:
+        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0)
+
     cols = df.columns.tolist()
 
-    # Health score (simple composite)
-    pos_feats = ['exercise_duration', 'sleep_duration', 'step_count',
-                 'water_intake', 'calorie_expenditure']
+    # Health score
+    pos_feats = ['exercise_duration', 'sleep_duration', 'step_count', 'water_intake', 'calorie_expenditure']
     neg_feats = ['bmi', 'heart_rate']
     pos_score = sum(float(df[f].iloc[0]) for f in pos_feats if f in cols)
     neg_score = sum(float(df[f].iloc[0]) for f in neg_feats if f in cols)
     df['health_score'] = pos_score - neg_score
 
-    # Activity efficiency
+    # Ratios & Interactions
     if 'calorie_expenditure' in cols and 'exercise_duration' in cols:
-        df['activity_efficiency'] = (
-            float(df['calorie_expenditure'].iloc[0]) /
-            (float(df['exercise_duration'].iloc[0]) + 1)
-        )
+        df['activity_efficiency'] = float(df['calorie_expenditure'].iloc[0]) / (float(df['exercise_duration'].iloc[0]) + 1.0)
 
-    # Steps per calorie
     if 'step_count' in cols and 'calorie_expenditure' in cols:
-        df['steps_per_calorie'] = (
-            float(df['step_count'].iloc[0]) /
-            (float(df['calorie_expenditure'].iloc[0]) + 1)
-        )
+        df['steps_per_calorie'] = float(df['step_count'].iloc[0]) / (float(df['calorie_expenditure'].iloc[0]) + 1.0)
 
-    # Sleep score (duration × encoded quality integer)
+    if 'heart_rate' in cols and 'sleep_duration' in cols:
+        df['heart_rate_to_sleep'] = float(df['heart_rate'].iloc[0]) / (float(df['sleep_duration'].iloc[0]) + 0.5)
+
+    if 'step_count' in cols and 'bmi' in cols:
+        df['steps_per_bmi'] = float(df['step_count'].iloc[0]) / (float(df['bmi'].iloc[0]) + 0.1)
+
+    if 'water_intake' in cols and 'exercise_duration' in cols:
+        df['water_per_exercise'] = float(df['water_intake'].iloc[0]) / (float(df['exercise_duration'].iloc[0]) + 1.0)
+
     if 'sleep_duration' in cols and 'sleep_quality' in cols:
-        df['sleep_score'] = (
-            float(df['sleep_duration'].iloc[0]) *
-            float(df['sleep_quality'].iloc[0])
-        )
-    elif 'sleep_duration' in cols:
-        df['sleep_score'] = float(df['sleep_duration'].iloc[0])
+        df['sleep_score'] = float(df['sleep_duration'].iloc[0]) * float(df['sleep_quality'].iloc[0])
+        df['is_ideal_sleep'] = 1 if 7.0 <= float(df['sleep_duration'].iloc[0]) <= 9.0 else 0
+        df['is_deprived_sleep'] = 1 if float(df['sleep_duration'].iloc[0]) < 6.0 else 0
 
-    # Stress-sleep ratio
+    if 'bmi' in cols:
+        bmi_v = float(df['bmi'].iloc[0])
+        df['is_normal_bmi'] = 1 if 18.5 <= bmi_v <= 24.9 else 0
+        df['is_obese'] = 1 if bmi_v >= 30.0 else 0
+
+    if 'heart_rate' in cols:
+        hr_v = float(df['heart_rate'].iloc[0])
+        df['is_tachycardia'] = 1 if hr_v > 100.0 else 0
+        df['is_bradycardia'] = 1 if hr_v < 60.0 else 0
+
+    if 'step_count' in cols:
+        df['is_active_steps'] = 1 if float(df['step_count'].iloc[0]) >= 8000 else 0
+
     if 'stress_level' in cols and 'sleep_duration' in cols:
-        df['stress_sleep_ratio'] = (
-            float(df['stress_level'].iloc[0]) /
-            (float(df['sleep_duration'].iloc[0]) + 1)
-        )
+        df['stress_sleep_ratio'] = float(df['stress_level'].iloc[0]) / (float(df['sleep_duration'].iloc[0]) + 1.0)
 
-    # ── Step 4: Align to expected feature list ──────────
+    # Group diff baselines if expected by model
+    for mean_col in ['heart_rate_diff_from_group_mean', 'bmi_diff_from_group_mean', 'step_count_diff_from_group_mean', 'calorie_expenditure_diff_from_group_mean']:
+        if mean_col not in df.columns:
+            df[mean_col] = 0.0
+
+    # Align features
     feature_names = bundle['feature_names']
     for fn in feature_names:
         if fn not in df.columns:
-            df[fn] = 0
+            df[fn] = 0.0
 
-    df = df[feature_names]                        # enforce column order
-    df = df.apply(pd.to_numeric, errors='coerce').fillna(0)
+    df = df[feature_names]
+    df = df.apply(pd.to_numeric, errors='coerce').fillna(0.0)
 
-    # ── Step 5: Scale ───────────────────────────────────
     scaler = bundle['scaler']
     X = scaler.transform(df.values.reshape(1, -1))
 
-    # ── Step 6: Predict ─────────────────────────────────
-    model         = bundle['model']
+    model = bundle['model']
     label_encoder = bundle['label_encoder']
 
     pred_encoded = model.predict(X)[0]
-    pred_label   = label_encoder.inverse_transform([pred_encoded])[0]
+    pred_label = label_encoder.inverse_transform([pred_encoded])[0]
 
-    # Probabilities
     if hasattr(model, 'predict_proba'):
-        probas       = model.predict_proba(X)[0]
+        probas = model.predict_proba(X)[0]
         class_probas = dict(zip(label_encoder.classes_, probas.tolist()))
     else:
-        class_probas = {
-            cls: (1.0 if cls == pred_label else 0.0)
-            for cls in label_encoder.classes_
-        }
+        class_probas = {cls: (1.0 if cls == pred_label else 0.0) for cls in label_encoder.classes_}
 
     return pred_label, class_probas
 

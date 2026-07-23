@@ -254,6 +254,7 @@ bundle = {
     'ensemble_models': [model_lgb, model_xgb, model_hgb],
     'scaler': scaler,
     'label_encoder': le_target,
+    'categorical_encoders': cat_encoders,
     'feature_names': list(X_all.columns),
     'class_names': CLASS_NAMES,
     'val_accuracy': round(val_acc, 4),
